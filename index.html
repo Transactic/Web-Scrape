@@ -3,17 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Scraper</title>
+    <title>Website Scraper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #1e3c72, #2a5298);
+            color: #ffffff;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 50px;
+        }
+        form {
+            margin: 30px auto;
+            padding: 20px;
+            max-width: 500px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        pre {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
     <h1>Website Scraper</h1>
     <form id="scrapeForm">
-        <label for="url">Enter URL to Scrape:</label>
-        <input type="url" id="url" name="url" required>
+        <label for="url">Enter URL to Scrape:</label><br>
+        <input type="url" id="url" name="url" placeholder="https://example.com" required>
         <button type="submit">Scrape</button>
     </form>
     <div id="result">
-        <h2>Scraped Data:</h2>
+        <h2>Result:</h2>
         <pre id="output"></pre>
     </div>
 
@@ -28,8 +72,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
                 });
-                const data = await response.json();
-                document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+
+                if (!response.ok) throw new Error(await response.text());
+                const blob = await response.blob();
+
+                // Trigger file download
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'website.zip';
+                link.click();
+
+                document.getElementById("output").textContent = "Website files downloaded successfully!";
             } catch (err) {
                 document.getElementById("output").textContent = `Error: ${err.message}`;
             }
