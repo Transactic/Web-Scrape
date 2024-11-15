@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const AdmZip = require('adm-zip');
+const path = require('path');
 
 const app = express();
 const port = 3000;
@@ -18,18 +20,44 @@ app.post('/scrape', async (req, res) => {
         const response = await axios.get(url);
         const html = response.data;
 
-        // Load HTML into Cheerio for parsing
+        // Parse HTML to extract links and assets
         const $ = cheerio.load(html);
+        const zip = new AdmZip();
 
-        // Example: Extract all links
-        const links = [];
-        $('a').each((i, elem) => {
-            links.push($(elem).attr('href'));
+        // Add HTML file
+        zip.addFile("index.html", Buffer.from(html, "utf-8"));
+
+        // Collect and download other assets (like CSS, JS, images)
+        const assets = [];
+        $('link[href], script[src], img[src]').each((i, elem) => {
+            const attr = elem.tagName === 'img' ? 'src' : 'href';
+            let assetUrl = $(elem).attr(attr);
+
+            if (assetUrl) {
+                if (!assetUrl.startsWith('http')) {
+                    assetUrl = new URL(assetUrl, url).href;
+                }
+                assets.push(assetUrl);
+            }
         });
 
-        res.json({ links });
+        for (const asset of assets) {
+            try {
+                const assetResponse = await axios.get(asset, { responseType: 'arraybuffer' });
+                const fileName = path.basename(new URL(asset).pathname);
+                zip.addFile(fileName, Buffer.from(assetResponse.data));
+            } catch (error) {
+                console.log(`Failed to fetch asset: ${asset}`);
+            }
+        }
+
+        // Send ZIP file
+        const zipBuffer = zip.toBuffer();
+        res.set('Content-Type', 'application/zip');
+        res.set('Content-Disposition', 'attachment; filename=website.zip');
+        res.send(zipBuffer);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).send(`Error: ${error.message}`);
     }
 });
 
